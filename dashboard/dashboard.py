@@ -8,23 +8,22 @@ import seaborn as sns
 st.title("Bike Sharing Data Dashboard")
 
 # Read CSV file
-day_df = pd.read_csv('data/day.csv')
-day_df['dteday'] = pd.to_datetime(day_df['dteday'])
+main_df = pd.read_csv('../data/day.csv')
+main_df['dteday'] = pd.to_datetime(main_df['dteday'])
 
 
 # prepare the processed data for visualization
 # count the total number of bike rentals for each season
+# question 1
 def create_season_count_df(df):
-    season_count = df.groupby('season')['cnt'].sum().reset_index()
+    season_count = df.groupby('season_name')['cnt'].sum().reset_index().sort_values(by='cnt', ascending=False)
     return season_count
 
-def create_weathersit_count_df(df):
-    season_count = df.groupby('weathersit')['cnt'].sum().reset_index()
-    return season_count
-
+# question 2
 def create_monthly_rentals_with_season(df):
     df['month_year'] = df['dteday'].dt.to_period('M')
-    monthly_day_df = df.groupby('month_year')['cnt'].sum().reset_index()
+    monthly_hour_df = df.groupby('month_year')['cnt'].sum().reset_index()
+
     season_mapping = {
         1: 'Spring',
         2: 'Summer',
@@ -35,13 +34,30 @@ def create_monthly_rentals_with_season(df):
     dominant_season_per_month = df.groupby(['month_year', 'season_name']).size().reset_index(name='count')
     dominant_season_per_month_df = dominant_season_per_month.loc[dominant_season_per_month.groupby('month_year')['count'].idxmax()].reset_index(drop=True)
     dominant_season_per_month_df = dominant_season_per_month_df[['month_year', 'season_name']]
-    monthly_rentals_with_season = pd.merge(monthly_day_df, dominant_season_per_month_df, on='month_year', how='left')
+    monthly_rentals_with_season = pd.merge(monthly_hour_df, dominant_season_per_month_df, on='month_year', how='left')
     return monthly_rentals_with_season
+
+# question 3
+def create_weekday_count_df(df):
+    weekday_count = df.groupby('weekday')['cnt'].sum().reset_index().sort_values(by='cnt', ascending=False)
+    return weekday_count
+
+
+# question 4
+def create_weathersit_count_df(df):
+    weathersit_count = df.groupby('weathersit')['cnt'].sum().reset_index().sort_values(by='cnt', ascending=False)
+    return weathersit_count
+
+# question 5
+def create_hour_count_df(df):
+    hour_count = df.groupby('hr')['cnt'].sum().reset_index().sort_values(by='cnt', ascending=False)
+    return hour_count
+
 
 # Craft dashboard elements
 # Sidebar settings
-min_date = day_df["dteday"].min()
-max_date = day_df["dteday"].max()
+min_date = main_df["dteday"].min()
+max_date = main_df["dteday"].max()
  
 with st.sidebar:
     # Menambahkan logo perusahaan
@@ -55,18 +71,19 @@ with st.sidebar:
     )
 
 # prepare the data for visualization
-season_count_df = create_season_count_df(day_df)
-monthly_rentals_with_season_df = create_monthly_rentals_with_season(day_df)
-weathersit_count_df = create_weathersit_count_df(day_df)
+season_count_df = create_season_count_df(main_df)
+monthly_rentals_with_season_df = create_monthly_rentals_with_season(main_df)
+weekday_count_df = create_weekday_count_df(main_df)
+weathersit_count_df = create_weathersit_count_df(main_df)
+hour_count_df = create_hour_count_df(main_df)
 
 # chart 1
 st.subheader("Bike Rentals According to Season")
 plt.figure(figsize=(10, 6))
-sns.barplot(x='season', y='cnt', data=season_count_df, palette='viridis')
+sns.barplot(x='season_name', y='cnt', data=season_count_df, palette='viridis')
 plt.title('Total Bike Rentals by Season')
 plt.xlabel('Season')
 plt.ylabel('Total Rentals')
-plt.xticks(ticks=[0, 1, 2, 3], labels=['Spring', 'Summer', 'Fall', 'Winter'], rotation=45)
 plt.grid(axis='y', linestyle='--')
 plt.tight_layout()
 st.pyplot(plt)
@@ -104,35 +121,35 @@ plt.grid(True)
 plt.tight_layout()
 st.pyplot(plt)
 
-# # chart 3
-# st.subheader("Correlation Matrix")
-# plt.figure(figsize=(10, 8))
-# numeric_df = day_df.select_dtypes(include=[np.number])
-# correlation_matrix = numeric_df.corr()
-# sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', center=0, fmt='.2f', square=True)
-# plt.title('Correlation Matrix of Bike Sharing Data')
-# plt.tight_layout()
-# st.pyplot(plt)
-
-# chart 4
+# chart 3
 st.subheader("Bike Rentals According by Weekday")
-plt.figure(figsize=(8,5))
-sns.barplot(x='weekday', y='cnt', hue='weekday', data=day_df)
-plt.title("Count of Rentals by Weekday")
-plt.xlabel("Weekday")
-plt.ylabel("Count of Rentals")
+plt.figure(figsize=(10, 6))
+sns.barplot(x='weekday', y='cnt', data=weekday_count_df, palette='viridis', order=weekday_count_df['weekday'])
+plt.title('Total Bike Rentals by Weekday')
+plt.xlabel('Weekday')
+plt.ylabel('Total Rentals')
+plt.grid(axis='y', linestyle='--')
 plt.tight_layout()
 st.pyplot(plt)
 
-# chart 5
+# chart 4
 st.subheader("Bike Rentals According to Weather Situation")
 plt.figure(figsize=(10, 6))
-sns.barplot(x='weathersit', y='cnt', data=weathersit_count_df, palette='viridis')
+ax = sns.barplot(x='weathersit', y='cnt', data=weathersit_count_df, palette='viridis')
 plt.title('Total Bike Rentals by Weather Situation')
 plt.xlabel('Weather Situation')
 plt.ylabel('Total Rentals')
 plt.xticks(ticks=[0, 1, 2, 3], labels=['1', '2', '3', '4'])
 plt.grid(axis='y', linestyle='--')
+
+# Add count labels above the bars
+for p in ax.patches:
+    ax.annotate(f'{p.get_height():.0f}', 
+                (p.get_x() + p.get_width() / 2., p.get_height()), 
+                ha='center', va='center', 
+                xytext=(0, 10), 
+                textcoords='offset points')
+
 plt.tight_layout()
 st.pyplot(plt)
 
@@ -144,6 +161,17 @@ st.markdown("""
 - **3:** Light Snow, Light Rain + Thunderstorm + Scattered clouds, Light Rain + Scattered clouds
 - **4:** Heavy Rain + Ice Pallets + Thunderstorm + Mist, Snow + Fog
 """)
+
+# chart 5
+st.subheader("Bike Rentals According to Hour of the Day")
+plt.figure(figsize=(10, 6))
+sns.barplot(x='hr', y='cnt', data=hour_count_df.head(5), palette='viridis')
+plt.title('Top 5 Total Bike Rentals by Hour')
+plt.xlabel('Hour')
+plt.ylabel('Total Rentals')
+plt.grid(axis='y', linestyle='--')
+plt.tight_layout()
+st.pyplot(plt)
 
 footer_html = """
 <style>
