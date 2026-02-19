@@ -8,7 +8,7 @@ import seaborn as sns
 st.title("Bike Sharing Data Dashboard")
 
 # Read CSV file
-main_df = pd.read_csv('../data/day.csv')
+main_df = pd.read_csv('./dashboard/main_df.csv')
 main_df['dteday'] = pd.to_datetime(main_df['dteday'])
 
 
